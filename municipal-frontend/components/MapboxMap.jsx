@@ -20,8 +20,13 @@ const MapboxMap = ({ currentTruck }) => {
   // Save dustbin markers so we can update them later without removing them.
   const dustbinMarkerRefs = useRef({});
 
-  const [ctoWaypoints, setCtoWaypoints] = useState([]);
-  const [vagaiWaypoints, setVagaiWaypoints] = useState([]);
+	const handleStatusChange = (id, newStatus) => {
+		setPoints((prev) =>
+			prev.map((point) =>
+				point.id === id ? { ...point, status: newStatus } : point
+			)
+		);
+	};
 
   // Fetch dustbin data and include dustbin id for later use.
   useEffect(() => {
@@ -68,9 +73,14 @@ const MapboxMap = ({ currentTruck }) => {
       addCustomMarkers(); // Add static colony markers
     }
 
-    map.current.on("load", () => {
-      handleTruckSelection();
-    });
+				{/* Logout Button */}
+				<Button
+					onClick={handleLogout}
+					className="w-full bg-red-600 hover:bg-red-700"
+				>
+					Logout
+				</Button>
+			</div>
 
     return () => {
       animationRefs.current.forEach((ref) => cancelAnimationFrame(ref));
@@ -397,4 +407,4 @@ const MapboxMap = ({ currentTruck }) => {
   );
 };
 
-export default MapboxMap;
+export default Municipal;

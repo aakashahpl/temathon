@@ -21,7 +21,6 @@ const Sidebar = () => {
   };
 
   const handleMoveToTransferStation = () => {
-    // Move map to Transfer Station location (12.936010, 80.100612)
     if (mapRef.current) {
       mapRef.current.flyTo({
         center: [80.100612, 12.936010],

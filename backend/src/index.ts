@@ -31,7 +31,7 @@ app.get("/test",async(req,res)=>{
 
 app.use("/truck",truckRoute);
 app.use("/dustbin",dustbinRoute);
-// app.use("/booking",bookingRoute);
+
 
 
 connectToDB();
