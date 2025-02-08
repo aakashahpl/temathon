@@ -28,7 +28,7 @@ const DriverMapBox = () => {
 
   // Fetch truck data.
   useEffect(() => {
-    fetch("http://localhost:4200/truck/getTruck/11")
+    fetch("http://localhost:4200/truck/getTruck/15")
       .then((res) => res.json())
       .then((data) => {
         if (data.message === "Truck fetched successfully." && data.data) {

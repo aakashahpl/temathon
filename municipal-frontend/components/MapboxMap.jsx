@@ -20,13 +20,8 @@ const MapboxMap = ({ currentTruck }) => {
   // Save dustbin markers so we can update them later without removing them.
   const dustbinMarkerRefs = useRef({});
 
-	const handleStatusChange = (id, newStatus) => {
-		setPoints((prev) =>
-			prev.map((point) =>
-				point.id === id ? { ...point, status: newStatus } : point
-			)
-		);
-	};
+  const [ctoWaypoints, setCtoWaypoints] = useState([]);
+  const [vagaiWaypoints, setVagaiWaypoints] = useState([]);
 
   // Fetch dustbin data and include dustbin id for later use.
   useEffect(() => {
@@ -73,14 +68,9 @@ const MapboxMap = ({ currentTruck }) => {
       addCustomMarkers(); // Add static colony markers
     }
 
-				{/* Logout Button */}
-				<Button
-					onClick={handleLogout}
-					className="w-full bg-red-600 hover:bg-red-700"
-				>
-					Logout
-				</Button>
-			</div>
+    map.current.on("load", () => {
+      handleTruckSelection();
+    });
 
     return () => {
       animationRefs.current.forEach((ref) => cancelAnimationFrame(ref));
@@ -234,95 +224,95 @@ const MapboxMap = ({ currentTruck }) => {
     progressRefs.current = [0, 0];
   };
 
-  const fetchOptimizedRoute = async (waypoints, color, colonyIndex) => {
-    const coordinates = waypoints
-      .map((marker) => `${marker.lng},${marker.lat}`)
-      .join(";");
-    const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}&roundtrip=true`;
-  
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-  
-      if (data.trips && data.trips.length > 0) {
-        const trip = data.trips[0];
-        routeRefs.current[colonyIndex] = trip.geometry.coordinates;
-  
-        map.current.addSource(`route-${colonyIndex}`, {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: routeRefs.current[colonyIndex],
-            },
+const fetchOptimizedRoute = async (waypoints, color, colonyIndex) => {
+  const coordinates = waypoints
+    .map((marker) => `${marker.lng},${marker.lat}`)
+    .join(";");
+  const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}&roundtrip=true`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.trips && data.trips.length > 0) {
+      const trip = data.trips[0];
+      routeRefs.current[colonyIndex] = trip.geometry.coordinates;
+
+      map.current.addSource(`route-${colonyIndex}`, {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: routeRefs.current[colonyIndex],
           },
-        });
-  
-        map.current.addLayer({
-          id: `route-${colonyIndex}`,
-          type: "line",
-          source: `route-${colonyIndex}`,
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": color, // always black
-            "line-width": 4,
-          },
-        });
-  
-        // Prepare truck assignment data.
-        const truckData = {
-          truck_id: colonyIndex + 1, // Example: truck ID based on colony index.
-          truck_number: `Truck ${colonyIndex + 1}`,
-          route_geometry: trip.geometry, // Optimized GeoJSON route.
-          current_location: trip.geometry.coordinates[0], // Starting point.
-          status: "in transit",
-          assigned_colony: colonyIndex === 0 ? "cto" : "vagai",
-          route_distance: trip.distance / 1000, // Convert meters to kilometers.
-          route_duration: trip.duration, // In seconds.
-          dustbin_ids: waypoints.map((marker) => marker.id), // List of dustbin IDs.
-        };
-  
-        // Call the backend API to assign the truck.
-        await assignTruck(truckData);
-  
-        // Add the moving truck marker.
-        const markerEl = document.createElement("div");
-        const markerRoot = createRoot(markerEl);
-        markerRoot.render(<FaTruckFront size={25} />);
-        markerRefs.current[colonyIndex] = new mapboxgl.Marker(markerEl)
-          .setLngLat(trip.geometry.coordinates[0])
-          .addTo(map.current);
-  
-        animateMarker(colonyIndex);
-      }
-    } catch (error) {
-      console.error("Error fetching optimized route:", error);
-    }
-  };
-  
-  // Function to assign truck via backend API
-  const assignTruck = async (truckData) => {
-    try {
-      const response = await fetch("http://localhost:4200/truck/assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(truckData),
+        },
       });
-      const result = await response.json();
-      if (result.message === "Truck assigned successfully.") {
-        console.log("Truck assignment successful:", result.data);
-      } else {
-        console.error("Truck assignment failed:", result);
-      }
-    } catch (error) {
-      console.error("Error assigning truck:", error);
+
+      map.current.addLayer({
+        id: `route-${colonyIndex}`,
+        type: "line",
+        source: `route-${colonyIndex}`,
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": color, // always black
+          "line-width": 4,
+        },
+      });
+
+      // Prepare truck assignment data.
+      const truckData = {
+        truck_id: colonyIndex + 1, // Example: truck ID based on colony index.
+        truck_number: `Truck ${colonyIndex + 1}`,
+        route_geometry: trip.geometry, // Optimized GeoJSON route.
+        current_location: trip.geometry.coordinates[0], // Starting point.
+        status: "in transit",
+        assigned_colony: colonyIndex === 0 ? "cto" : "vagai",
+        route_distance: trip.distance / 1000, // Convert meters to kilometers.
+        route_duration: trip.duration, // In seconds.
+        dustbin_ids: waypoints.map((marker) => marker.id), // List of dustbin IDs.
+      };
+
+      // Call the backend API to assign the truck.
+      await assignTruck(truckData);
+
+      // Add the moving truck marker.
+      const markerEl = document.createElement("div");
+      const markerRoot = createRoot(markerEl);
+      markerRoot.render(<FaTruckFront size={25} />);
+      markerRefs.current[colonyIndex] = new mapboxgl.Marker(markerEl)
+        .setLngLat(trip.geometry.coordinates[0])
+        .addTo(map.current);
+
+      animateMarker(colonyIndex);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching optimized route:", error);
+  }
+};
+
+// Function to assign truck via backend API
+const assignTruck = async (truckData) => {
+  try {
+    const response = await fetch("http://localhost:4200/truck/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(truckData),
+    });
+    const result = await response.json();
+    if (result.message === "Truck assigned successfully.") {
+      console.log("Truck assignment successful:", result.data);
+    } else {
+      console.error("Truck assignment failed:", result);
+    }
+  } catch (error) {
+    console.error("Error assigning truck:", error);
+  }
+};
 
   // Helper: Calculate approximate Euclidean distance (for small distances).
   const getDistance = (pos1, pos2) => {
@@ -407,4 +397,4 @@ const MapboxMap = ({ currentTruck }) => {
   );
 };
 
-export default Municipal;
+export default MapboxMap;
