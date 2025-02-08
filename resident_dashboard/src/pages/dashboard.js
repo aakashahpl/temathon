@@ -74,7 +74,7 @@ export default function Dashboard() {
 		today.setHours(10, 0, 0, 0);
 
 		if (currentHour >= 10) {
-			today.setDate(today.getDate() + 1); 
+			today.setDate(today.getDate() + 1);
 		}
 		if (today.getDate() % 2 !== 0) {
 			today.setDate(today.getDate() + 1);
@@ -93,18 +93,30 @@ export default function Dashboard() {
 			type: "success",
 			message: `Pickup scheduled for ${nextDay.toDateString()} at 10:00 AM`,
 		});
+		setPickupScheduled(true);
 	};
 
 	const handleCancelPickup = () => {
-		const nextPickup = new Date(currDate);
-		nextPickup.setDate(nextPickup.getDate() + 2);
-		nextPickup.setHours(10, 0, 0, 0);
 
-		setPickupTime(nextPickup);
-		setNotification({
-			type: "warning",
-			message: `Pickup canceled. Next scheduled pickup: ${nextPickup.toDateString()} at 10:00 AM`,
-		});
+		if (!pickupScheduled) {
+			setNotification({
+				type: "warning",
+				message: 'No Pick-ups Scheduled',
+			});
+		}
+		else {
+			const nextPickup = new Date(currDate);
+			nextPickup.setDate(nextPickup.getDate() + 2);
+			nextPickup.setHours(10, 0, 0, 0);
+
+			setPickupTime(nextPickup);
+			setPickupScheduled(false);
+			setNotification({
+				type: "warning",
+				message: `Pickup canceled. Next scheduled pickup: ${nextPickup.toDateString()} at 10:00 AM`,
+			});
+		}
+		
 	};
 	const toggleDarkMode = () => {
 		const newMode = !darkMode;
@@ -122,10 +134,6 @@ export default function Dashboard() {
 		await signOut(auth);
 		router.push("/");
 	};
-
-	const handleBinStatus = () => {
-		setBinStatus(0);
-	}
 
 
 	const sampleData = [
@@ -362,15 +370,12 @@ export default function Dashboard() {
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 									<Button
 										onClick={handleSchedulePickup}
-										className= " text-white bg-green-600 hover:bg-green-700"
+										className=" text-white bg-green-600 hover:bg-green-700"
 									>
 										Schedule Pickup
 									</Button>
 									<Button onClick={handleCancelPickup} variant="destructive">
 										Cancel Pickup
-									</Button>
-									<Button onClick={handleBinStatus} className = "bg-blue-500 text-white hover:bg-blue-700">
-										Empty Bin
 									</Button>
 								</div>
 							</div>
