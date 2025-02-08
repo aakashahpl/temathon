@@ -94,7 +94,7 @@ const Sidebar = () => {
 
       {/* Mapbox Map */}
       <div className="flex-1">
-        <MapboxMap currentTruck={currentTruck} mapRef={mapRef} />
+        <MapboxMap currentTruck={currentTruck} />
       </div>
     </div>
   );

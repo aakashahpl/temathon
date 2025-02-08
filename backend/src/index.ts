@@ -4,6 +4,7 @@ import {connectToDB} from "./utils/db";
 import userRoute from "./route/user";
 // import bookingRoute from "./route/dustbin";
 import dustbinRoute from "./route/dustbin";
+import truckRoute from "./route/truck";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
@@ -28,7 +29,7 @@ app.get("/test",async(req,res)=>{
     res.send("API working");
 })
 
-// app.use("/",userRoute);
+app.use("/truck",truckRoute);
 app.use("/dustbin",dustbinRoute);
 // app.use("/booking",bookingRoute);
 

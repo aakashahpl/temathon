@@ -20,3 +20,16 @@ model Dustbins {
   emptyCount     Int      @default(0) // Tracks how many times the bin has been emptied
   description    String   @default("house 1")
 }
+
+model Trucks {
+  id               Int       @id @default(autoincrement())
+  truck_id         Int
+  truck_number     String
+  route_geometry   Json      // Stores GeoJSON LineString with route coordinates
+  current_location Json      // Stores GeoJSON Point with current location
+  status           String    // e.g., "in transit", "idle", etc.
+  assigned_colony  String
+  route_distance   Float     // Distance of the assigned route in km or another unit
+  route_duration   Int       // Duration in seconds
+  dustbin_ids      Json      // Stores the list of dustbin IDs (e.g., [1, 2, 3, 4])
+}
