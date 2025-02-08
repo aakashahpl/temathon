@@ -13,8 +13,8 @@ export default function Home() {
 
   return (
     <div>
-      {/* <Login onLoginSuccess={handleLoginSuccess} /> */}
-      <Sidebar/>
+      <Login onLoginSuccess={handleLoginSuccess} />
+      {/* <Sidebar/> */}
     </div>
   );
 }

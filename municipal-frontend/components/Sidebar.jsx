@@ -1,57 +1,99 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import MapboxMap from "./MapboxMap";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 const Sidebar = () => {
   const [currentTruck, setCurrentTruck] = useState(0); // State to track selected truck
+  const mapRef = useRef(null); // Reference to Mapbox map for moving to Transfer Station
 
   const handleTruckChange = (option, value) => {
     setCurrentTruck(value); // Set state to 0 (all), 1 (truck 1), or 2 (truck 2)
   };
 
+  const handleMoveToTransferStation = () => {
+    // Move map to Transfer Station location (12.936010, 80.100612)
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: [80.100612, 12.936010],
+        zoom: 16,
+        essential: true, // Smooth animation
+      });
+    }
+  };
+
+  const handleLogout = () => {
+    alert("You have logged out!");
+    // Optionally, redirect to login page or handle logout logic here
+  };
+
   return (
     <div className="flex">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-800 text-white h-screen p-4">
-        <h2 className="text-2xl font-bold mb-4">Truck Control</h2>
+      <div className="w-64 bg-gray-900 text-white h-screen p-6 flex flex-col justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
 
-        {/* Dropdown Button */}
-        <div className="relative">
-          <button
-            className="w-full text-left px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 focus:outline-none"
+          {/* Dropdown for Truck Selection */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="w-full bg-gray-700 text-white hover:bg-gray-600">
+                Trucks: {currentTruck === 0 ? "All" : `Truck ${currentTruck}`}
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="bg-white text-black w-full">
+              <DropdownMenuItem
+                onClick={() => handleTruckChange("All", 0)}
+                className="hover:bg-gray-200"
+              >
+                All Trucks
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleTruckChange("Truck 1", 1)}
+                className="hover:bg-gray-200"
+              >
+                Truck 1
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleTruckChange("Truck 2", 2)}
+                className="hover:bg-gray-200"
+              >
+                Truck 2
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Transfer Station Button */}
+          <Button
+            onClick={handleMoveToTransferStation}
+            className="mt-6 w-full bg-blue-600 text-white hover:bg-blue-700"
           >
-            Trucks: {currentTruck === 0 ? "All" : `Truck ${currentTruck}`}
-          </button>
-
-          <div className="mt-2 border rounded-lg shadow-md bg-white text-black">
-            <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-              onClick={() => handleTruckChange("All", 0)}
-            >
-              All Trucks
-            </button>
-            <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-              onClick={() => handleTruckChange("Truck 1", 1)}
-            >
-              Truck 1
-            </button>
-            <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-200"
-              onClick={() => handleTruckChange("Truck 2", 2)}
-            >
-              Truck 2
-            </button>
-          </div>
+            Transfer Station
+          </Button>
         </div>
+
+        {/* Logout Button */}
+        <Button
+          onClick={handleLogout}
+          className="bg-red-600 w-full text-white hover:bg-red-700 mt-auto"
+        >
+          Logout
+        </Button>
       </div>
 
       {/* Mapbox Map */}
       <div className="flex-1">
-        <MapboxMap currentTruck={currentTruck} />
+        <MapboxMap currentTruck={currentTruck} mapRef={mapRef} />
       </div>
     </div>
   );
 };
 
 export default Sidebar;
-

@@ -29,12 +29,14 @@ const MapboxMap = ({ currentTruck }) => {
             lng: bin.longitude,
             lat: bin.latitude,
             description: `${bin.totalWaste}%`,
+            totalWaste: bin.totalWaste,  // Store for color logic
           }));
 
           const vagaiBins = data.data.filter((bin) => bin.location === "vagai").map((bin) => ({
             lng: bin.longitude,
             lat: bin.latitude,
-            description: ` ${bin.totalWaste}%`,
+            description: `${bin.totalWaste}%`,
+            totalWaste: bin.totalWaste,  // Store for color logic
           }));
 
           setCtoWaypoints(ctoBins);
@@ -73,24 +75,28 @@ const MapboxMap = ({ currentTruck }) => {
     const colonies = [
       {
         name: "CTO Colony",
-        color: "#f18069",
         waypoints: ctoWaypoints,
       },
       {
         name: "Vagai Colony",
-        color: "#3ba8f7",
         waypoints: vagaiWaypoints,
       },
     ];
 
     colonies.forEach((colony, colonyIndex) => {
       if (currentTruck === 0 || currentTruck === colonyIndex + 1) {
+        // Display all markers but filter waypoints for the route
+        const waypointsForRoute = colony.waypoints.filter((marker) => marker.totalWaste > 50);
+
         colony.waypoints.forEach((marker) => {
+          // Set marker color based on totalWaste level
+          const markerColor = marker.totalWaste > 50 ? "red" : "green";
+
           const el = document.createElement("div");
           const binIcon = createRoot(el);
           binIcon.render(
             <div>
-              <BsTrash3Fill size={24} color={colony.color} />
+              <BsTrash3Fill size={24} color={markerColor} />
               <div
                 style={{
                   color: "#363636",
@@ -116,7 +122,9 @@ const MapboxMap = ({ currentTruck }) => {
             .addTo(map.current);
         });
 
-        fetchRoute(colony.waypoints, colony.color, colonyIndex);
+        if (waypointsForRoute.length > 0) {
+          fetchRoute(waypointsForRoute, "black", colonyIndex);  // Set route color to black
+        }
       }
     });
   };
@@ -175,7 +183,7 @@ const MapboxMap = ({ currentTruck }) => {
             "line-cap": "round",
           },
           paint: {
-            "line-color": color,
+            "line-color": color,  // Always set to black
             "line-width": 4,
           },
         });
@@ -217,7 +225,7 @@ const MapboxMap = ({ currentTruck }) => {
   };
 
   return (
-    <div className="w-100 h-screen">
+    <div className="w-12/12 h-screen">
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
     </div>
   );
