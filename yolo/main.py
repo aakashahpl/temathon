@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 
 # Load YOLO model
-model = YOLO("./model/best.pt")
+model = YOLO("./model/best_v1.pt")
 
 # Define class names
 CLASS_NAMES = ['Bottle', 'Can', 'Carton', 'E-Waste', 'Electric Cable', 'Glass', 'Glass Bottle', 'Metal', 'Organic Waste', 'Phone Case', 'Plastic bag', 'Plastics', 'Spoon', 'Styrofoam', 'Trash', 'Trash- Brush', 'Wooden Waste', 'Yoga Mat', 'paper']
