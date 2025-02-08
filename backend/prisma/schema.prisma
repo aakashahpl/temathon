@@ -18,4 +18,5 @@ model Dustbins {
   lastEmptiedAt  DateTime // Last time the bin was emptied
   installedAt    DateTime // Installation date
   emptyCount     Int      @default(0) // Tracks how many times the bin has been emptied
+  description    String   @default("house 1")
 }

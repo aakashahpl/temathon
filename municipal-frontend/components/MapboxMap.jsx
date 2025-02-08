@@ -1,8 +1,8 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { BsTrash3Fill, BsFillTruckFrontFill } from "react-icons/bs";
+import { BsTrash3Fill } from "react-icons/bs";
 import { FaTruckFront } from "react-icons/fa6";
 import { createRoot } from 'react-dom/client';
 
@@ -15,42 +15,34 @@ const MapboxMap = ({ currentTruck }) => {
   const routeRefs = useRef([null, null]);
   const markerRefs = useRef([null, null]);
 
+  const [ctoWaypoints, setCtoWaypoints] = useState([]);
+  const [vagaiWaypoints, setVagaiWaypoints] = useState([]);
 
-  const colonies = [
-    {
-      name: "CTO Colony",
-      color: "#f18069",
-      waypoints: [
-        { lng: 80.098928, lat: 12.931811, description: "cto bin 1" },
-        { lng: 80.098654, lat: 12.930553, description: "cto bin 2" },
-        { lng: 80.099129, lat: 12.930379, description: "cto bin 3" },
-        { lng: 80.099418, lat: 12.929582, description: "cto bin 4" },
-        { lng: 80.098823, lat: 12.929678, description: "cto bin 5" },
-        { lng: 80.098179, lat: 12.929802, description: "cto bin 6" },
-        { lng: 80.097624, lat: 12.929872, description: "cto bin 7" },
-        { lng: 80.099471, lat: 12.929073, description: "cto bin 8" },
-        { lng: 80.098785, lat: 12.929195, description: "cto bin 9" },
-        { lng: 80.098458, lat: 12.929244, description: "cto bin 10" },
-        { lng: 80.096610, lat: 12.929508, description: "cto bin 11" },
-        { lng: 80.096931, lat: 12.927988, description: "cto bin 12" },
-        { lng: 80.101092, lat: 12.935907, description: "cto bin 13" },
-      ],
-    },
-    {
-      name: "Vagai Colony",
-      color: "#3ba8f7",
-      waypoints: [
-        { lng: 80.100807, lat: 12.928291, description: "vagai bin 1" },
-        { lng: 80.101276, lat: 12.927797, description: "vagai bin 2" },
-        { lng: 80.101200, lat: 12.927148, description: "vagai bin 3" },
-        { lng: 80.101125, lat: 12.926514, description: "vagai bin 4" },
-        { lng: 80.101064, lat: 12.925946, description: "vagai bin 5" },
-        { lng: 80.101092, lat: 12.935907, description: "transfer station" },
+  useEffect(() => {
+    // Fetch dustbin data from API and filter by location
+    fetch("http://localhost:4200/dustbin/fetchAll")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.message === "Dustbins fetched successfully.") {
+          // Filter data based on locations (cto and vagai)
+          const ctoBins = data.data.filter((bin) => bin.location === "cto").map((bin) => ({
+            lng: bin.longitude,
+            lat: bin.latitude,
+            description: `${bin.totalWaste}%`,
+          }));
 
-        // { lng: 80.096931, lat: 12.927988, description: "cto bin 16" }
-      ],
-    }
-  ];
+          const vagaiBins = data.data.filter((bin) => bin.location === "vagai").map((bin) => ({
+            lng: bin.longitude,
+            lat: bin.latitude,
+            description: ` ${bin.totalWaste}%`,
+          }));
+
+          setCtoWaypoints(ctoBins);
+          setVagaiWaypoints(vagaiBins);
+        }
+      })
+      .catch((error) => console.error("Error fetching dustbin data:", error));
+  }, []);
 
   useEffect(() => {
     if (!map.current) {
@@ -67,36 +59,49 @@ const MapboxMap = ({ currentTruck }) => {
     });
 
     return () => {
-      // Clean up ongoing animations when component unmounts
       animationRefs.current.forEach((ref) => cancelAnimationFrame(ref));
     };
-  }, []);
+  }, [ctoWaypoints, vagaiWaypoints]);
 
   useEffect(() => {
     handleTruckSelection();
   }, [currentTruck]);
 
   const handleTruckSelection = () => {
-    // Clear existing markers, routes, and animations
     clearPreviousMapData();
+
+    const colonies = [
+      {
+        name: "CTO Colony",
+        color: "#f18069",
+        waypoints: ctoWaypoints,
+      },
+      {
+        name: "Vagai Colony",
+        color: "#3ba8f7",
+        waypoints: vagaiWaypoints,
+      },
+    ];
 
     colonies.forEach((colony, colonyIndex) => {
       if (currentTruck === 0 || currentTruck === colonyIndex + 1) {
         colony.waypoints.forEach((marker) => {
-          const el = document.createElement('div');
+          const el = document.createElement("div");
           const binIcon = createRoot(el);
           binIcon.render(
             <div>
-              <BsTrash3Fill size={24} color="#f18069" />
-              <div style={{
-                color: "#363636",
-                fontSize: "12px",
-                fontWeight: "bold",
-                background: "white",
-                borderRadius: "4px",
-                padding: "2px"
-              }}>
-                100%
+              <BsTrash3Fill size={24} color={colony.color} />
+              <div
+                style={{
+                  color: "#363636",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  background: "white",
+                  borderRadius: "4px",
+                  padding: "2px",
+                }}
+              >
+                {marker.description}
               </div>
             </div>
           );
@@ -111,18 +116,17 @@ const MapboxMap = ({ currentTruck }) => {
             .addTo(map.current);
         });
 
-        fetchRoute(colony.waypoints, "#363636", colonyIndex);
+        fetchRoute(colony.waypoints, colony.color, colonyIndex);
       }
     });
   };
 
   const clearPreviousMapData = () => {
-    // Stop all animations
     animationRefs.current.forEach((ref) => cancelAnimationFrame(ref));
     animationRefs.current = [];
 
     // Remove all sources and layers from the map
-    colonies.forEach((_, colonyIndex) => {
+    [0, 1].forEach((colonyIndex) => {
       const routeId = `route-${colonyIndex}`;
       if (map.current.getLayer(routeId)) {
         map.current.removeLayer(routeId);
@@ -132,7 +136,6 @@ const MapboxMap = ({ currentTruck }) => {
       }
     });
 
-    // Clear markers and progress references
     markerRefs.current.forEach((marker) => {
       if (marker) marker.remove();
     });
@@ -141,7 +144,7 @@ const MapboxMap = ({ currentTruck }) => {
   };
 
   const fetchRoute = async (waypoints, color, colonyIndex) => {
-    const coordinates = waypoints.map(marker => `${marker.lng},${marker.lat}`).join(';');
+    const coordinates = waypoints.map((marker) => `${marker.lng},${marker.lat}`).join(";");
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
     try {
@@ -177,12 +180,9 @@ const MapboxMap = ({ currentTruck }) => {
           },
         });
 
-        // Initialize the truck marker
-        const markerEl = document.createElement('div');
+        const markerEl = document.createElement("div");
         const markerRoot = createRoot(markerEl);
-        markerRoot.render(
-          <FaTruckFront size={25} />
-        );
+        markerRoot.render(<FaTruckFront size={25} />);
 
         markerRefs.current[colonyIndex] = new mapboxgl.Marker(markerEl)
           .setLngLat(routeRefs.current[colonyIndex][0])
@@ -191,7 +191,7 @@ const MapboxMap = ({ currentTruck }) => {
         animateMarker(colonyIndex);
       }
     } catch (error) {
-      console.error('Error fetching route:', error);
+      console.error("Error fetching route:", error);
     }
   };
 
