@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <div>
       <Login onLoginSuccess={handleLoginSuccess} />
-      {/* <Sidebar/> */}
+      
     </div>
   );
 }

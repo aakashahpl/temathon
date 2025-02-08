@@ -1,234 +1,106 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { BsTrash3Fill } from "react-icons/bs";
-import { FaTruckFront } from "react-icons/fa6";
-import { createRoot } from 'react-dom/client';
+import React, { useState, useRef } from "react";
+import MapboxMap from "@/components/MapboxMap";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/router";
 
+const pickupPoints = [
+	{ id: 1, location: [80.11, 12.93], status: "pending", time: "10:00 AM" },
+	{ id: 2, location: [80.12, 12.935], status: "completed", time: "10:30 AM" },
+	{ id: 3, location: [80.115, 12.928], status: "missed", time: "11:00 AM" },
+];
 
-const MapboxMap = ({ currentTruck }) => {
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const animationRefs = useRef([]);
-  const progressRefs = useRef([0, 0]);
-  const routeRefs = useRef([null, null]);
-  const markerRefs = useRef([null, null]);
+const Municipal = () => {
+	const [points, setPoints] = useState(pickupPoints);
+	const [currentTruck, setCurrentTruck] = useState(1); // For tracking which truck/route to show
+	const router = useRouter();
 
-  const [ctoWaypoints, setCtoWaypoints] = useState([]);
-  const [vagaiWaypoints, setVagaiWaypoints] = useState([]);
+	const handleStatusChange = (id, newStatus) => {
+		setPoints((prev) =>
+			prev.map((point) =>
+				point.id === id ? { ...point, status: newStatus } : point
+			)
+		);
+	};
 
-  useEffect(() => {
-    // Fetch dustbin data from API and filter by location
-    fetch("http://localhost:4200/dustbin/fetchAll")
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.message === "Dustbins fetched successfully.") {
-          // Filter data based on locations (cto and vagai)
-          const ctoBins = data.data.filter((bin) => bin.location === "cto").map((bin) => ({
-            lng: bin.longitude,
-            lat: bin.latitude,
-            description: `${bin.totalWaste}%`,
-            totalWaste: bin.totalWaste,  // Store for color logic
-          }));
+	const handleLogout = () => {
+		alert("You have logged out!");
+		router.push("/");
+	};
 
-          const vagaiBins = data.data.filter((bin) => bin.location === "vagai").map((bin) => ({
-            lng: bin.longitude,
-            lat: bin.latitude,
-            description: `${bin.totalWaste}%`,
-            totalWaste: bin.totalWaste,  // Store for color logic
-          }));
+	return (
+		<div className="flex h-screen">
+			{/* Sidebar */}
+			<div className="w-64 bg-gray-900 text-white p-6 flex flex-col justify-between">
+				<div>
+					<h2 className="text-2xl font-bold mb-6">Driver Dashboard</h2>
 
-          setCtoWaypoints(ctoBins);
-          setVagaiWaypoints(vagaiBins);
-        }
-      })
-      .catch((error) => console.error("Error fetching dustbin data:", error));
-  }, []);
+					{/* Truck Selection */}
+					<div className="mb-6">
+						<h3 className="text-lg mb-2">Select Route</h3>
+						<div className="flex gap-2">
+							<Button
+								onClick={() => setCurrentTruck(1)}
+								className={`flex-1 ${
+									currentTruck === 1 ? "bg-blue-600" : "bg-gray-600"
+								}`}
+							>
+								CTO
+							</Button>
+							<Button
+								onClick={() => setCurrentTruck(2)}
+								className={`flex-1 ${
+									currentTruck === 2 ? "bg-blue-600" : "bg-gray-600"
+								}`}
+							>
+								Vagai
+							</Button>
+						</div>
+					</div>
 
-  useEffect(() => {
-    if (!map.current) {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v11",
-        center: [80.100807, 12.928291],
-        zoom: 16,
-      });
-    }
+					{/* Pickup Points List */}
+					<h3 className="text-lg mb-4">Pickup Points</h3>
+					<ul className="space-y-4">
+						{points.map((point) => (
+							<li key={point.id} className="p-3 bg-gray-800 rounded-lg">
+								<p className="mb-1">Time: {point.time}</p>
+								<p className="mb-2 capitalize">Status: {point.status}</p>
+								{point.status === "pending" && (
+									<div className="flex gap-2">
+										<Button
+											onClick={() => handleStatusChange(point.id, "completed")}
+											className="flex-1 bg-green-600 hover:bg-green-700"
+										>
+											Complete
+										</Button>
+										<Button
+											onClick={() => handleStatusChange(point.id, "missed")}
+											className="flex-1 bg-red-600 hover:bg-red-700"
+										>
+											Missed
+										</Button>
+									</div>
+								)}
+							</li>
+						))}
+					</ul>
+				</div>
 
-    map.current.on("load", () => {
-      handleTruckSelection();
-    });
+				{/* Logout Button */}
+				<Button
+					onClick={handleLogout}
+					className="w-full bg-red-600 hover:bg-red-700"
+				>
+					Logout
+				</Button>
+			</div>
 
-    return () => {
-      animationRefs.current.forEach((ref) => cancelAnimationFrame(ref));
-    };
-  }, [ctoWaypoints, vagaiWaypoints]);
-
-  useEffect(() => {
-    handleTruckSelection();
-  }, [currentTruck]);
-
-  const handleTruckSelection = () => {
-    clearPreviousMapData();
-
-    const colonies = [
-      {
-        name: "CTO Colony",
-        waypoints: ctoWaypoints,
-      },
-      {
-        name: "Vagai Colony",
-        waypoints: vagaiWaypoints,
-      },
-    ];
-
-    colonies.forEach((colony, colonyIndex) => {
-      if (currentTruck === 0 || currentTruck === colonyIndex + 1) {
-        // Display all markers but filter waypoints for the route
-        const waypointsForRoute = colony.waypoints.filter((marker) => marker.totalWaste > 50);
-
-        colony.waypoints.forEach((marker) => {
-          // Set marker color based on totalWaste level
-          const markerColor = marker.totalWaste > 50 ? "red" : "green";
-
-          const el = document.createElement("div");
-          const binIcon = createRoot(el);
-          binIcon.render(
-            <div>
-              <BsTrash3Fill size={24} color={markerColor} />
-              <div
-                style={{
-                  color: "#363636",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  background: "white",
-                  borderRadius: "4px",
-                  padding: "2px",
-                }}
-              >
-                {marker.description}
-              </div>
-            </div>
-          );
-
-          new mapboxgl.Marker(el)
-            .setLngLat([marker.lng, marker.lat])
-            .setPopup(
-              new mapboxgl.Popup({ offset: 25 }).setHTML(
-                `<h3>${marker.description}</h3>`
-              )
-            )
-            .addTo(map.current);
-        });
-
-        if (waypointsForRoute.length > 0) {
-          fetchRoute(waypointsForRoute, "black", colonyIndex);  // Set route color to black
-        }
-      }
-    });
-  };
-
-  const clearPreviousMapData = () => {
-    animationRefs.current.forEach((ref) => cancelAnimationFrame(ref));
-    animationRefs.current = [];
-
-    // Remove all sources and layers from the map
-    [0, 1].forEach((colonyIndex) => {
-      const routeId = `route-${colonyIndex}`;
-      if (map.current.getLayer(routeId)) {
-        map.current.removeLayer(routeId);
-      }
-      if (map.current.getSource(routeId)) {
-        map.current.removeSource(routeId);
-      }
-    });
-
-    markerRefs.current.forEach((marker) => {
-      if (marker) marker.remove();
-    });
-    markerRefs.current = [];
-    progressRefs.current = [0, 0];
-  };
-
-  const fetchRoute = async (waypoints, color, colonyIndex) => {
-    const coordinates = waypoints.map((marker) => `${marker.lng},${marker.lat}`).join(";");
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
-
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        routeRefs.current[colonyIndex] = data.routes[0].geometry.coordinates;
-
-        map.current.addSource(`route-${colonyIndex}`, {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: routeRefs.current[colonyIndex],
-            },
-          },
-        });
-
-        map.current.addLayer({
-          id: `route-${colonyIndex}`,
-          type: "line",
-          source: `route-${colonyIndex}`,
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": color,  // Always set to black
-            "line-width": 4,
-          },
-        });
-
-        const markerEl = document.createElement("div");
-        const markerRoot = createRoot(markerEl);
-        markerRoot.render(<FaTruckFront size={25} />);
-
-        markerRefs.current[colonyIndex] = new mapboxgl.Marker(markerEl)
-          .setLngLat(routeRefs.current[colonyIndex][0])
-          .addTo(map.current);
-
-        animateMarker(colonyIndex);
-      }
-    } catch (error) {
-      console.error("Error fetching route:", error);
-    }
-  };
-
-  const animateMarker = (colonyIndex) => {
-    const speed = 0.005;
-    progressRefs.current[colonyIndex] += speed;
-
-    if (progressRefs.current[colonyIndex] >= routeRefs.current[colonyIndex].length - 1) {
-      progressRefs.current[colonyIndex] = 0;
-    }
-
-    const index = Math.floor(progressRefs.current[colonyIndex]);
-    const nextIndex = (index + 1) % routeRefs.current[colonyIndex].length;
-    const startPoint = routeRefs.current[colonyIndex][index];
-    const endPoint = routeRefs.current[colonyIndex][nextIndex];
-    const segmentProgress = progressRefs.current[colonyIndex] - index;
-
-    const lng = startPoint[0] + (endPoint[0] - startPoint[0]) * segmentProgress;
-    const lat = startPoint[1] + (endPoint[1] - startPoint[1]) * segmentProgress;
-
-    markerRefs.current[colonyIndex].setLngLat([lng, lat]);
-    animationRefs.current[colonyIndex] = requestAnimationFrame(() => animateMarker(colonyIndex));
-  };
-
-  return (
-    <div className="w-12/12 h-screen">
-      <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-    </div>
-  );
+			{/* Map */}
+			<div className="flex-1">
+				<MapboxMap currentTruck={currentTruck} />
+			</div>
+		</div>
+	);
 };
 
-export default MapboxMap;
+export default Municipal;

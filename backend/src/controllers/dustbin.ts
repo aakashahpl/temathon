@@ -18,3 +18,21 @@ export const fetchDustbins = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Server error. Please try again later.' });
     } 
 };
+
+
+export const getFirstDustbin = async (req: Request, res: Response) => {
+  try {
+    const dustbin = await prisma.dustbins.findUnique({
+      where: { id: 1 }, // Hardcoded to fetch the first row
+    });
+
+    if (!dustbin) {
+      return res.status(404).json({ message: "Dustbin not found" });
+    }
+
+    res.json(dustbin);
+  } catch (error) {
+    console.error("Error fetching dustbin:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};

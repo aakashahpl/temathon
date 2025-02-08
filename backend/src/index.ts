@@ -28,9 +28,9 @@ app.get("/test",async(req,res)=>{
     res.send("API working");
 })
 
-// app.use("/",userRoute);
+
 app.use("/dustbin",dustbinRoute);
-// app.use("/booking",bookingRoute);
+
 
 
 connectToDB();
