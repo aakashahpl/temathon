@@ -1,0 +1,18 @@
+"use client";
+import React, { useEffect, useRef } from "react";
+import MapboxMap from "../MapboxMap";
+
+
+const Municipal = () => {
+
+  return (
+    <div className="w-100 h-screen flex justify-end">
+        <div className="w-8/12 text-7xl">
+          driver page
+        {/* <MapboxMap/> */}
+        </div>
+    </div>
+  );
+};
+
+export default Municipal;

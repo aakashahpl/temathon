@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"  // Change this if you're using another database
+  url      = env("DATABASE_URL")
+}
+
+model Dustbins {
+  id             Int      @id @default(autoincrement())
+  location       String
+  longitude      Float
+  latitude       Float
+  bioFillLevel   Int      @default(1) // Fill level (1 to 10)
+  nonBioFillLevel Int     @default(1) // Fill level (1 to 10)
+  totalWaste     Int      @default(0) // Cumulative total waste in kg or another unit
+  lastEmptiedAt  DateTime // Last time the bin was emptied
+  installedAt    DateTime // Installation date
+  emptyCount     Int      @default(0) // Tracks how many times the bin has been emptied
+}
