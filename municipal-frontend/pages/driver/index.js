@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from "react";
-import MapboxMap from "../MapboxMap";
+import MapboxMap from "../../components/MapboxMap";
 
 
 const Municipal = () => {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Login from "./Login";  
-import MapboxMap from "./MapboxMap";  
+import MapboxMap from "../components/MapboxMap";  
+import Sidebar from "@/components/Sidebar";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -12,7 +13,8 @@ export default function Home() {
 
   return (
     <div>
-      {isLoggedIn ? <MapboxMap /> : <Login onLoginSuccess={handleLoginSuccess} />}
+      {/* <Login onLoginSuccess={handleLoginSuccess} /> */}
+      <Sidebar/>
     </div>
   );
 }

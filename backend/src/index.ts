@@ -2,8 +2,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import {connectToDB} from "./utils/db";
 import userRoute from "./route/user";
-import bookingRoute from "./route/dustbin";
-import { createTables } from "./utils/table";
+// import bookingRoute from "./route/dustbin";
+import dustbinRoute from "./route/dustbin";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
@@ -29,7 +29,7 @@ app.get("/test",async(req,res)=>{
 })
 
 // app.use("/",userRoute);
-// app.use("/speaker",speakerRoute);
+app.use("/dustbin",dustbinRoute);
 // app.use("/booking",bookingRoute);
 
 
