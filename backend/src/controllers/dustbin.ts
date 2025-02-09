@@ -52,13 +52,12 @@ export const updatePickupStatus = async (req: Request, res: Response) => {
     let newTotalWaste = dustbin.totalWaste;
     if (action === "schedule") {
 
-   
-
       newPickupStatus = 1;
       newCollectionTime = new Date();
       newCollectionTime.setDate(newCollectionTime.getDate() + 1); 
         newTotalWaste= 60;
 
+      
     } else if (action === "cancel") {
       // If action is cancel, we reset pickup status and revert the scheduled pickup date
       if (newPickupStatus === 0) {
@@ -117,3 +116,52 @@ export const fetchMany = async (req: Request, res: Response) => {
       return res.status(500).json({ message: "Server error. Please try again later." });
     }
   };
+
+
+  export const getPendingRequests = async (req: Request, res: Response) => {
+  try {
+    const pendingRequests = await prisma.dustbins.findMany({
+      where: { pickupStatus: 1 }, 
+    });
+
+    res.json(pendingRequests);
+  } catch (error) {
+    console.error("Error fetching pending requests:", error);
+    res.status(500).json({ error: "Failed to fetch pending requests" });
+  }
+};
+
+export const approvePickupRequest = async (req: Request, res: Response) => {
+  try {
+    const { dustbinId } = req.body;
+    
+
+    if (!dustbinId) {
+      return res.status(400).json({ error: "Dustbin ID is required" });
+    }
+
+    // Find the dustbin
+    const dustbin = await prisma.dustbins.findUnique({
+      where: { id: dustbinId },
+    });
+
+    if (!dustbin) {
+      return res.status(404).json({ error: "Dustbin not found" });
+    }
+
+    if (dustbin.pickupStatus !== 1) {
+      return res.status(400).json({ error: "Request is not in pending state" });
+    }
+
+    // Approve the pickup request (set pickupStatus to 2)
+    const updatedDustbin = await prisma.dustbins.update({
+      where: { id: dustbinId },
+      data: { pickupStatus: 2 },
+    });
+
+    return res.json({ message: "Pickup approved successfully", dustbin: updatedDustbin });
+  } catch (error) {
+    console.error("Error approving pickup:", error);
+    return res.status(500).json({ error: "Failed to approve pickup request" });
+  }
+};

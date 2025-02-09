@@ -23,7 +23,7 @@ export default function Municipal() {
 
           // If truck has dustbin_ids, fetch those dustbins
           if (truckData.dustbin_ids) {
-            fetch("http://localhost:4200/dustbin/fetchMany", {
+            fetch("http://localhost:4200/fetchMany", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ dustbin_ids: truckData.dustbin_ids }),
