@@ -19,7 +19,11 @@ model Dustbins {
   installedAt    DateTime // Installation date
   emptyCount     Int      @default(0) // Tracks how many times the bin has been emptied
   description    String   @default("house 1")
+  
+  scheduledPickupDate DateTime @default(dbgenerated("(NOW() + INTERVAL '2 days')"))
+  pickupStatus       Int      @default(0) // 0 = No Request, 1 = Requested, 2 = Approved
 }
+
 
 model Trucks {
   id               Int       @id @default(autoincrement())
@@ -32,4 +36,14 @@ model Trucks {
   route_distance   Float     // Distance of the assigned route in km or another unit
   route_duration   Int       // Duration in seconds
   dustbin_ids      Json      // Stores the list of dustbin IDs (e.g., [1, 2, 3, 4])
+}
+
+
+model RecyclingCenters {
+  id         Int      @id @default(autoincrement())
+  location   String   // Geographical location or city
+  address    String   // Full address of the center
+  phone      String   // Contact phone number
+  open_time  String   // Opening time (e.g., "08:00 AM")
+  close_time String   // Closing time (e.g., "06:00 PM")
 }

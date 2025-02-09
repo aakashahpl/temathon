@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { fetchDustbins, getFirstDustbin } from '../controllers/dustbin';
+import { fetchDustbins, getFirstDustbin, updatePickupStatus } from '../controllers/dustbin';
 
 const router = Router();
 
@@ -7,5 +7,5 @@ const router = Router();
 router.get('/fetchAll',fetchDustbins);
 
 router.get("/first", getFirstDustbin);
-
+router.post("/pickup", updatePickupStatus);
 export default router;

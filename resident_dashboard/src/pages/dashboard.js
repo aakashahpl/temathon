@@ -50,6 +50,7 @@ import {
 	Sun,
 	LogOut,
 } from "lucide-react";
+import { fetchDustbinData } from "./api/dustbin";
 
 export default function Dashboard() {
 	const router = useRouter();
@@ -59,65 +60,167 @@ export default function Dashboard() {
 	const [pickupTime, setPickupTime] = useState(null);
 	const [notification, setNotification] = useState(null);
 	const currDate = new Date();
-	const [binStatus, setBinStatus] = useState(70);
-
+	const [binStatus, setBinStatus] = useState(null);
+	const [loading, setLoading] = useState(true);
+	  const [isMobile, setIsMobile] = useState(false);
+	const API_URL = "http://localhost:4200";
 	useEffect(() => {
 		const storedTheme = localStorage.getItem("theme");
 		if (storedTheme === "dark") {
 			document.documentElement.classList.add("dark");
 			setDarkMode(true);
 		}
+	}, []);
+	 useEffect(() => {
+			const handleResize = () => {
+				setIsMobile(window.innerWidth < 768);
+				setSidebarOpen(window.innerWidth >= 768);
+			};
 
-		const today = new Date();
-		const currentHour = today.getHours();
+			handleResize();
+			window.addEventListener("resize", handleResize);
+			return () => window.removeEventListener("resize", handleResize);
+		}, []);
 
-		today.setHours(10, 0, 0, 0);
+	useEffect(() => {
+		const getData = async () => {
+			const data = await fetchDustbinData();
 
-		if (currentHour >= 10) {
-			today.setDate(today.getDate() + 1);
-		}
-		if (today.getDate() % 2 !== 0) {
-			today.setDate(today.getDate() + 1);
-		}
+			setBinStatus(data.totalWaste);
+			setLoading(false);
 
-		setPickupTime(today);
+			setPickupTime(new Date(data.scheduledPickupDate));
+			setPickupScheduled(data.scheduledPickupDate !== null); // If a pickup is scheduled
+		};
+		getData();
 	}, []);
 
-	const handleSchedulePickup = () => {
-		const nextDay = new Date();
+	 const sidebarClass = `
+    fixed md:static
+    ${isSidebarOpen ? "w-64" : "w-0 md:w-20"} 
+    h-full
+    bg-white dark:bg-gray-800
+    transition-all duration-300
+    border-r border-gray-200 dark:border-gray-700
+    z-50
+    overflow-hidden
+  `;
+
+		const mainContentClass = `
+    flex-1
+    w-full
+    overflow-auto
+    transition-all
+    duration-300
+    ${isSidebarOpen && isMobile ? "opacity-50" : "opacity-100"}
+  `;
+
+
+	if (loading) return <p>Loading dustbin data...</p>;
+
+	if (!binStatus) return <p>No dustbin data found.</p>;
+
+	const handleSchedulePickup = async () => {
+		const currDate = new Date();
+		const nextDay = new Date(currDate);
 		nextDay.setDate(currDate.getDate() + 1);
 		nextDay.setHours(10, 0, 0, 0);
 
-		setPickupTime(nextDay);
-		setNotification({
-			type: "success",
-			message: `Pickup scheduled for ${nextDay.toDateString()} at 10:00 AM`,
+		// Make the API call to request the pickup
+		const response = await fetch(`${API_URL}/pickup`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ action: "schedule" }),
 		});
-		setPickupScheduled(true);
+
+		if (response.ok) {
+			// If the response is successful, update the state
+			const data = await response.json();
+
+			// Check if pickupStatus is 2 (scheduled)
+			if (data.pickupStatus !== 2) {
+				setPickupScheduled(false);
+				setNotification({
+					type: "info",
+					message: "Request initiated. Waiting for pickup to be scheduled.",
+				});
+
+		
+				const checkStatusInterval = setInterval(async () => {
+					const dustbinData = await fetchDustbinData();
+
+					if (dustbinData.pickupStatus === 2) {
+						clearInterval(checkStatusInterval); 
+						setPickupScheduled(true);
+						setPickupTime(nextDay);
+						setNotification({
+							type: "success",
+							message: `Pickup scheduled for ${nextDay.toDateString()} at 10:00 AM`,
+						});
+					} else {
+						setNotification({
+							type: "info",
+							message: "Request initiated. Waiting for pickup to be scheduled.",
+						});
+					}
+				}, 5000);
+			} else {
+			
+				setPickupScheduled(true);
+				setPickupTime(nextDay);
+				setNotification({
+					type: "success",
+					message: `Pickup scheduled for ${nextDay.toDateString()} at 10:00 AM`,
+				});
+			}
+		} else {
+			const data = await response.json();
+			setNotification({
+				type: "error",
+				message: data.error || "Failed to schedule pickup",
+			});
+		}
 	};
 
-	const handleCancelPickup = () => {
-
+	const handleCancelPickup = async () => {
 		if (!pickupScheduled) {
 			setNotification({
 				type: "warning",
-				message: 'No Pick-ups Scheduled',
+				message: "No Pick-ups Scheduled",
 			});
-		}
-		else {
-			const nextPickup = new Date(currDate);
-			nextPickup.setDate(nextPickup.getDate() + 2);
-			nextPickup.setHours(10, 0, 0, 0);
+		} else {
+			const response = await fetch(`${API_URL}/pickup`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ action: "cancel" }),
+			});
 
-			setPickupTime(nextPickup);
-			setPickupScheduled(false);
-			setNotification({
-				type: "warning",
-				message: `Pickup canceled. Next scheduled pickup: ${nextPickup.toDateString()} at 10:00 AM`,
-			});
+			if (response.ok) {
+				const nextPickup = new Date(currDate);
+				nextPickup.setDate(nextPickup.getDate() + 2);
+				nextPickup.setHours(10, 0, 0, 0);
+
+				setPickupTime(nextPickup);
+
+				setPickupScheduled(false);
+				setNotification({
+					type: "warning",
+					message: `Pickup canceled. Next scheduled pickup: ${nextPickup.toDateString()} at 10:00 AM`,
+				});
+			} else {
+				const data = await response.json();
+				setNotification({
+					type: "error",
+					message: data.error || "Failed to cancel pickup",
+				});
+			}
 		}
-		
 	};
+
 	const toggleDarkMode = () => {
 		const newMode = !darkMode;
 		setDarkMode(newMode);
@@ -135,7 +238,7 @@ export default function Dashboard() {
 		router.push("/");
 	};
 
-
+	// Sample data for charts
 	const sampleData = [
 		{ month: "Jan", biodegradable: 30, nonBiodegradable: 20 },
 		{ month: "Feb", biodegradable: 50, nonBiodegradable: 35 },
@@ -158,19 +261,47 @@ export default function Dashboard() {
 		{
 			id: 2,
 			title: "Pickup scheduled",
-			description: "Next pickup in 2 days",
+			description: pickupTime
+				? getPickupDescription(pickupTime)
+				: "No pickup scheduled",
 			type: "info",
 		},
 	];
 
+	function getPickupDescription(pickupTime) {
+		if (!pickupTime) return "No pickup scheduled";
+
+		const currentDate = new Date();
+		const pickupDate = new Date(pickupTime);
+
+		// Reset time components to compare just the dates
+		const currentDay = new Date(currentDate.setHours(0, 0, 0, 0));
+		const pickupDay = new Date(pickupDate.setHours(0, 0, 0, 0));
+
+		// Calculate difference in days
+		const diffTime = pickupDay.getTime() - currentDay.getTime();
+		const daysUntilPickup = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+		if (daysUntilPickup === 1) {
+			return "Pickup is tomorrow";
+		} else if (daysUntilPickup === 0) {
+			return "Pickup is today";
+		} else if (daysUntilPickup > 1) {
+			return `Next pickup in ${daysUntilPickup} days`;
+		} else {
+			return "Pickup is overdue";
+		}
+	}
 	return (
 		<div className="flex h-screen bg-gray-100 dark:bg-gray-900">
 			{/* Sidebar */}
-			<div
-				className={`${
-					isSidebarOpen ? "w-64" : "w-20"
-				} bg-white dark:bg-gray-800 h-full transition-all duration-300 border-r border-gray-200 dark:border-gray-700`}
-			>
+			{isMobile && isSidebarOpen && (
+				<div
+					className="fixed inset-0 bg-black bg-opacity-50 z-40"
+					onClick={() => setSidebarOpen(false)}
+				/>
+			)}
+			<div className={sidebarClass}>
 				<div className="p-4">
 					<div className="flex items-center justify-center mb-8">
 						<Recycle
@@ -207,7 +338,7 @@ export default function Dashboard() {
 			</div>
 
 			{/* Main Content */}
-			<div className="flex-1 overflow-auto">
+			<div className={mainContentClass}>
 				{/* Top Navigation */}
 				<header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
 					<div className="flex items-center justify-between px-6 h-16">
@@ -287,7 +418,7 @@ export default function Dashboard() {
 						{[
 							{
 								title: "Collection Time",
-								value: pickupTime ? pickupTime.toDateString() : "10:00 AM",
+								value: pickupTime ? pickupTime.toDateString() : "",
 								icon: Clock,
 							},
 							{
