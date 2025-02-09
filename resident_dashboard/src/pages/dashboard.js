@@ -49,6 +49,7 @@ import {
 	Moon,
 	Sun,
 	LogOut,
+	Phone,
 } from "lucide-react";
 import { fetchDustbinData } from "./api/dustbin";
 
@@ -62,7 +63,11 @@ export default function Dashboard() {
 	const currDate = new Date();
 	const [binStatus, setBinStatus] = useState(null);
 	const [loading, setLoading] = useState(true);
-	  const [isMobile, setIsMobile] = useState(false);
+	const [isMobile, setIsMobile] = useState(false);
+	const [locations, setLocations] = useState([]);
+	const [locationError, setLocationError] = useState(null);
+	const [activeSection, setActiveSection] = useState("Dashboard");
+
 	const API_URL = "http://localhost:4200";
 	useEffect(() => {
 		const storedTheme = localStorage.getItem("theme");
@@ -71,16 +76,40 @@ export default function Dashboard() {
 			setDarkMode(true);
 		}
 	}, []);
-	 useEffect(() => {
-			const handleResize = () => {
-				setIsMobile(window.innerWidth < 768);
-				setSidebarOpen(window.innerWidth >= 768);
-			};
+	useEffect(() => {
+		const handleResize = () => {
+			setIsMobile(window.innerWidth < 768);
+			setSidebarOpen(window.innerWidth >= 768);
+		};
 
-			handleResize();
-			window.addEventListener("resize", handleResize);
-			return () => window.removeEventListener("resize", handleResize);
-		}, []);
+		handleResize();
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, []);
+
+	useEffect(() => {
+		const fetchNearbyCenters = async (location) => {
+			try {
+				const response = await fetch(`${API_URL}/center/${location}`);
+				if (!response.ok) {
+					throw new Error("Failed to fetch locations");
+				}
+				const data = await response.json();
+				setLocations(data.data); // Assuming the response contains a "data" field with centers info
+			} catch (error) {
+				setLocationError(error.message);
+			}
+		};
+
+		// You can either hardcode a location, use the browser's geolocation, or let the user input the location.
+		const fetchLocation = () => {
+			// For demonstration, we will use a static location.
+			const userLocation = "cto"; // Replace with dynamic location logic
+			fetchNearbyCenters(userLocation);
+		};
+
+		fetchLocation();
+	}, []);
 
 	useEffect(() => {
 		const getData = async () => {
@@ -95,7 +124,7 @@ export default function Dashboard() {
 		getData();
 	}, []);
 
-	 const sidebarClass = `
+	const sidebarClass = `
     fixed md:static
     ${isSidebarOpen ? "w-64" : "w-0 md:w-20"} 
     h-full
@@ -106,7 +135,7 @@ export default function Dashboard() {
     overflow-hidden
   `;
 
-		const mainContentClass = `
+	const mainContentClass = `
     flex-1
     w-full
     overflow-auto
@@ -114,7 +143,6 @@ export default function Dashboard() {
     duration-300
     ${isSidebarOpen && isMobile ? "opacity-50" : "opacity-100"}
   `;
-
 
 	if (loading) return <p>Loading dustbin data...</p>;
 
@@ -147,12 +175,11 @@ export default function Dashboard() {
 					message: "Request initiated. Waiting for pickup to be scheduled.",
 				});
 
-		
 				const checkStatusInterval = setInterval(async () => {
 					const dustbinData = await fetchDustbinData();
 
 					if (dustbinData.pickupStatus === 2) {
-						clearInterval(checkStatusInterval); 
+						clearInterval(checkStatusInterval);
 						setPickupScheduled(true);
 						setPickupTime(nextDay);
 						setNotification({
@@ -167,7 +194,6 @@ export default function Dashboard() {
 					}
 				}, 5000);
 			} else {
-			
 				setPickupScheduled(true);
 				setPickupTime(nextDay);
 				setNotification({
@@ -254,8 +280,8 @@ export default function Dashboard() {
 	const notifications = [
 		{
 			id: 1,
-			title: "Bin almost full",
-			description: `Bin #123 is ${binStatus} % full`,
+			title: "Bin status",
+			description: `Bin : ${binStatus} % full`,
 			type: "warning",
 		},
 		{
@@ -292,6 +318,137 @@ export default function Dashboard() {
 			return "Pickup is overdue";
 		}
 	}
+	const parseTime = (timeStr) => {
+		if (!timeStr) return null;
+
+		// Remove any extra spaces and convert to lowercase
+		timeStr = timeStr.trim().toLowerCase();
+
+		// Extract hours and minutes
+		const [time, period] = timeStr.split(/(?=[ap]m)/);
+		const [hours, minutes] = time.split(":");
+
+		let hour = parseInt(hours);
+		const minute = parseInt(minutes);
+
+		// Convert to 24-hour format
+		if (period === "pm" && hour !== 12) {
+			hour += 12;
+		} else if (period === "am" && hour === 12) {
+			hour = 0;
+		}
+
+		return { hours: hour, minutes: minute };
+	};
+
+	const formatTime = (timeStr) => {
+		if (!timeStr) return "Not specified";
+		// Just return the original time string as it's already in the desired format
+		return timeStr.trim();
+	};
+
+	const isOpen = (openTime, closeTime) => {
+		if (!openTime || !closeTime) return null;
+
+		const now = new Date();
+		const currentHours = now.getHours();
+		const currentMinutes = now.getMinutes();
+		const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+
+		const openTimeParsed = parseTime(openTime);
+		const closeTimeParsed = parseTime(closeTime);
+
+		if (!openTimeParsed || !closeTimeParsed) return null;
+
+		const openTimeInMinutes =
+			openTimeParsed.hours * 60 + openTimeParsed.minutes;
+		const closeTimeInMinutes =
+			closeTimeParsed.hours * 60 + closeTimeParsed.minutes;
+
+		return (
+			currentTimeInMinutes >= openTimeInMinutes &&
+			currentTimeInMinutes <= closeTimeInMinutes
+		);
+	};
+
+	const renderLocationError = locationError ? (
+		<Alert className="mb-4">
+			<AlertTriangle className="h-4 w-4" />
+			<AlertDescription>{locationError}</AlertDescription>
+		</Alert>
+	) : null;
+
+	const renderLocations =
+		locations.length > 0 ? (
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+				{locations.map((center) => {
+					const openStatus = isOpen(center.open_time, center.close_time);
+					return (
+						<Card
+							key={center.id}
+							className="hover:shadow-lg transition-shadow duration-200"
+						>
+							<CardHeader className="pb-2">
+								<div className="flex justify-between items-start">
+									<div>
+										<CardTitle className="text-xl font-bold">
+											{center.name}
+										</CardTitle>
+										{openStatus !== null && (
+											<span
+												className={`text-sm font-medium ${
+													openStatus ? "text-green-600" : "text-red-600"
+												}`}
+											>
+												{openStatus ? "● Open Now" : "● Closed"}
+											</span>
+										)}
+									</div>
+								</div>
+							</CardHeader>
+							<CardContent>
+								<div className="space-y-4">
+									<div className="flex items-start space-x-2">
+										<MapPin className="w-5 h-5 text-gray-500 mt-1 flex-shrink-0" />
+										<CardDescription className="text-sm">
+											{center.address}
+										</CardDescription>
+									</div>
+
+									<div className="flex items-center space-x-2">
+										<Clock className="w-5 h-5 text-gray-500 flex-shrink-0" />
+										<CardDescription className="text-sm">
+											{formatTime(center.open_time)} -{" "}
+											{formatTime(center.close_time)}
+										</CardDescription>
+									</div>
+
+									{center.phone && (
+										<div className="flex items-center space-x-2">
+											<Phone className="w-5 h-5 text-gray-500 flex-shrink-0" />
+											<CardDescription className="text-sm">
+												<a
+													href={`tel:${center.phone}`}
+													className="hover:text-blue-600 transition-colors"
+												>
+													{center.phone}
+												</a>
+											</CardDescription>
+										</div>
+									)}
+								</div>
+							</CardContent>
+						</Card>
+					);
+				})}
+			</div>
+		) : (
+			<div className="text-center py-8">
+				<p className="text-gray-600 dark:text-gray-400">
+					No nearby recycling centers found.
+				</p>
+			</div>
+		);
 	return (
 		<div className="flex h-screen bg-gray-100 dark:bg-gray-900">
 			{/* Sidebar */}
@@ -313,27 +470,33 @@ export default function Dashboard() {
 							<span className="font-bold text-xl">SmartWaste</span>
 						)}
 					</div>
+					<div>
+						<button
+							onClick={() => setActiveSection("Dashboard")}
+							className={`flex items-center w-full p-3 rounded-lg transition-colors
+    ${
+			activeSection === "Dashboard"
+				? "bg-green-50 dark:bg-green-900/20 text-green-600"
+				: "hover:bg-gray-100 dark:hover:bg-gray-700"
+		}`}
+						>
+							<TrendingUp className="h-5 w-5" />
+							{isSidebarOpen && <span className="ml-3">Dashboard</span>}
+						</button>
 
-					<nav className="space-y-2">
-						{[
-							{ icon: TrendingUp, label: "Dashboard", active: true },
-							{ icon: MapPin, label: "Locations" },
-							{ icon: Settings, label: "Settings" },
-						].map((item) => (
-							<button
-								key={item.label}
-								className={`flex items-center w-full p-3 rounded-lg transition-colors
-                  ${
-										item.active
-											? "bg-green-50 dark:bg-green-900/20 text-green-600"
-											: "hover:bg-gray-100 dark:hover:bg-gray-700"
-									}`}
-							>
-								<item.icon className="h-5 w-5" />
-								{isSidebarOpen && <span className="ml-3">{item.label}</span>}
-							</button>
-						))}
-					</nav>
+						<button
+							onClick={() => setActiveSection("Locations")}
+							className={`flex items-center w-full p-3 rounded-lg transition-colors
+    ${
+			activeSection === "Locations"
+				? "bg-green-50 dark:bg-green-900/20 text-green-600"
+				: "hover:bg-gray-100 dark:hover:bg-gray-700"
+		}`}
+						>
+							<MapPin className="h-5 w-5" />
+							{isSidebarOpen && <span className="ml-3">Locations</span>}
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -404,115 +567,129 @@ export default function Dashboard() {
 				</header>
 
 				{/* Dashboard Content */}
-				<main className="p-6">
-					{/* Alerts */}
-					{notifications.map((notification) => (
-						<Alert key={notification.id} className="mb-4">
-							<AlertTriangle className="h-4 w-4" />
-							<AlertDescription>{notification.description}</AlertDescription>
-						</Alert>
-					))}
+				{activeSection === "Dashboard" && (
+					<main className="p-6">
+						{/* Alerts */}
+						{notifications.map((notification) => (
+							<Alert key={notification.id} className="mb-4">
+								<AlertTriangle className="h-4 w-4" />
+								<AlertDescription>{notification.description}</AlertDescription>
+							</Alert>
+						))}
 
-					{/* Stats Grid */}
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-						{[
-							{
-								title: "Collection Time",
-								value: pickupTime ? pickupTime.toDateString() : "",
-								icon: Clock,
-							},
-							{
-								title: "Bin Status",
-								value: `${binStatus}% Full`,
-								icon: Trash2,
-							},
-							{ title: "Recycling Centers", value: "3 Nearby", icon: MapPin },
-							{ title: "Weekly Progress", value: "+12.5%", icon: TrendingUp },
-						].map((stat, index) => (
-							<Card key={index}>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										{stat.title}
-									</CardTitle>
-									<stat.icon className="h-4 w-4 text-gray-500" />
+						{/* Stats Grid */}
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+							{[
+								{
+									title: "Collection Time",
+									value: pickupTime ? pickupTime.toDateString() : "",
+									icon: Clock,
+								},
+								{
+									title: "Bin Status",
+									value: `${binStatus}% Full`,
+									icon: Trash2,
+								},
+
+								{ title: "Weekly Progress", value: "+12.5%", icon: TrendingUp },
+							].map((stat, index) => (
+								<Card key={index}>
+									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+										<CardTitle className="text-sm font-medium">
+											{stat.title}
+										</CardTitle>
+										<stat.icon className="h-4 w-4 text-gray-500" />
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold">{stat.value}</div>
+									</CardContent>
+								</Card>
+							))}
+						</div>
+
+						{/* Charts */}
+						<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							<Card>
+								<CardHeader>
+									<CardTitle>Waste Trends</CardTitle>
+									<CardDescription>
+										Monthly breakdown of waste types
+									</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<div className="text-2xl font-bold">{stat.value}</div>
+									<div className="h-[300px]">
+										<ResponsiveContainer width="100%" height="100%">
+											<LineChart data={sampleData}>
+												<span className="text-white">jkgha;h;</span>
+												<XAxis dataKey="month" stroke="#888888" />
+												<YAxis stroke="#888888" />
+												<Tooltip />
+												<Line
+													type="monotone"
+													dataKey="biodegradable"
+													stroke="#22c55e"
+													strokeWidth={2}
+												/>
+												<Line
+													type="monotone"
+													dataKey="nonBiodegradable"
+													stroke="#3b82f6"
+													strokeWidth={2}
+												/>
+											</LineChart>
+										</ResponsiveContainer>
+									</div>
 								</CardContent>
 							</Card>
-						))}
-					</div>
 
-					{/* Charts */}
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-						<Card>
-							<CardHeader>
-								<CardTitle>Waste Trends</CardTitle>
-								<CardDescription>
-									Monthly breakdown of waste types
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="h-[300px]">
-									<ResponsiveContainer width="100%" height="100%">
-										<LineChart data={sampleData}>
-											<span className="text-white">jkgha;h;</span>
-											<XAxis dataKey="month" stroke="#888888" />
-											<YAxis stroke="#888888" />
-											<Tooltip />
-											<Line
-												type="monotone"
-												dataKey="biodegradable"
-												stroke="#22c55e"
-												strokeWidth={2}
-											/>
-											<Line
-												type="monotone"
-												dataKey="nonBiodegradable"
-												stroke="#3b82f6"
-												strokeWidth={2}
-											/>
-										</LineChart>
-									</ResponsiveContainer>
-								</div>
-							</CardContent>
-						</Card>
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+								<div className="mt-6">
+									{/* Show Notification if Exists */}
+									{notification && (
+										<Alert
+											className={`mb-4 ${
+												notification.type === "success"
+													? "bg-green-100 text-green-700"
+													: "bg-yellow-100 text-yellow-700"
+											}`}
+										>
+											{notification.type === "success" ? (
+												<CheckCircle className="h-5 w-5  dark:text-black" />
+											) : (
+												<AlertTriangle className="h-5 w-5 dark:text-black" />
+											)}
+											<AlertDescription>
+												{notification.message}
+											</AlertDescription>
+										</Alert>
+									)}
 
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-							<div className="mt-6">
-								{/* Show Notification if Exists */}
-								{notification && (
-									<Alert
-										className={`mb-4 ${
-											notification.type === "success"
-												? "bg-green-100 text-green-700"
-												: "bg-yellow-100 text-yellow-700"
-										}`}
-									>
-										{notification.type === "success" ? (
-											<CheckCircle className="h-5 w-5  dark:text-black" />
-										) : (
-											<AlertTriangle className="h-5 w-5 dark:text-black" />
-										)}
-										<AlertDescription>{notification.message}</AlertDescription>
-									</Alert>
-								)}
-
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-									<Button
-										onClick={handleSchedulePickup}
-										className=" text-white bg-green-600 hover:bg-green-700"
-									>
-										Schedule Pickup
-									</Button>
-									<Button onClick={handleCancelPickup} variant="destructive">
-										Cancel Pickup
-									</Button>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+										<Button
+											onClick={handleSchedulePickup}
+											className=" text-white bg-green-600 hover:bg-green-700"
+										>
+											Schedule Pickup
+										</Button>
+										<Button onClick={handleCancelPickup} variant="destructive">
+											Cancel Pickup
+										</Button>
+									</div>
 								</div>
 							</div>
 						</div>
+					</main>
+				)}
+
+				{activeSection === "Locations" && (
+					<div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+						<h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+							Recycling Centers Near You
+						</h2>
+						{renderLocationError}
+						{renderLocations}
 					</div>
-				</main>
+				)}
 			</div>
 		</div>
 	);
