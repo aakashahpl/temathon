@@ -41,7 +41,7 @@ const Sidebar = () => {
       {/* Sidebar */}
       <div className="w-2/12 bg-gray-900 text-white h-screen p-6 flex flex-col justify-between">
         <div>
-          <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+          <h2 className="text-2xl font-bold mb-6 border-b-[1px] border-gray-200 pb-2">Municipal Dashboard</h2>
 
           {/* Dropdown for Truck Selection */}
           <DropdownMenu>

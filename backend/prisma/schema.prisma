@@ -3,33 +3,44 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"  // Change this if you're using another database
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Dustbins {
-  id             Int      @id @default(autoincrement())
-  location       String
-  longitude      Float
-  latitude       Float
-  bioFillLevel   Int      @default(1) // Fill level (1 to 10)
-  nonBioFillLevel Int     @default(1) // Fill level (1 to 10)
-  totalWaste     Int      @default(0) // Cumulative total waste in kg or another unit
-  lastEmptiedAt  DateTime // Last time the bin was emptied
-  installedAt    DateTime // Installation date
-  emptyCount     Int      @default(0) // Tracks how many times the bin has been emptied
-  description    String   @default("house 1")
+  id                  Int      @id @default(autoincrement())
+  location            String
+  longitude           Float
+  latitude            Float
+  bioFillLevel        Int      @default(1)
+  nonBioFillLevel     Int      @default(1)
+  totalWaste          Int      @default(0)
+  lastEmptiedAt       DateTime
+  installedAt         DateTime
+  emptyCount          Int      @default(0)
+  description         String   @default("house 1")
+  pickupStatus        Int      @default(0)
+  scheduledPickupDate DateTime @default(dbgenerated("(now() + '2 days'::interval)"))
 }
 
 model Trucks {
-  id               Int       @id @default(autoincrement())
+  id               Int    @id @default(autoincrement())
   truck_id         Int
   truck_number     String
-  route_geometry   Json      // Stores GeoJSON LineString with route coordinates
-  current_location Json      // Stores GeoJSON Point with current location
-  status           String    // e.g., "in transit", "idle", etc.
+  route_geometry   Json
+  current_location Json
+  status           String
   assigned_colony  String
-  route_distance   Float     // Distance of the assigned route in km or another unit
-  route_duration   Int       // Duration in seconds
-  dustbin_ids      Json      // Stores the list of dustbin IDs (e.g., [1, 2, 3, 4])
+  route_distance   Float
+  route_duration   Int
+  dustbin_ids      Json
+}
+
+model recycling_centers {
+  id         Int     @id @default(autoincrement())
+  location   String? @db.VarChar
+  address    String? @db.VarChar
+  phone      String? @db.VarChar
+  open_time  String? @db.VarChar
+  close_time String? @db.VarChar
 }

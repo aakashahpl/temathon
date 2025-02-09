@@ -71,9 +71,9 @@ export default function Municipal() {
     // Full-screen container so map is visible
     <div className="flex h-screen w-screen">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white p-6 flex flex-col justify-between">
+      <div className=" w-96 bg-gray-900 text-white p-6 flex flex-col justify-between">
         <div>
-          <h2 className="text-2xl font-bold mb-6">Driver Dashboard</h2>
+          <h2 className="text-2xl font-bold mb-6 border-b-[1px] border-gray-200 pb-2">Driver Dashboard</h2>
 
           <h3 className="text-lg mb-4">Dustbins</h3>
 
@@ -99,7 +99,7 @@ export default function Municipal() {
           )}
 
           {/* Dustbin list with scrolling */}
-          <ul className="space-y-4 h-96 overflow-scroll mt-4">
+          <ul className="space-y-4 h-96 overflow-y-scroll mt-4">
             {dustbins.map((bin) => (
               <li
                 key={bin.id}

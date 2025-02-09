@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { BsTrash3Fill } from "react-icons/bs";
 import { FaTruckMoving } from "react-icons/fa";
 import { createRoot } from "react-dom/client";
+import { FaLocationDot } from "react-icons/fa6";
 
 // Replace with your real Mapbox token
 mapboxgl.accessToken = "pk.eyJ1IjoiYWFrYXNocGF0ZWxhaHBsIiwiYSI6ImNsbWF2MnpkejBkeW8zcGpyNnZsZGs1ancifQ.1CZK6EwQfroKMlUqn1yobA";
@@ -38,8 +39,8 @@ export default function MunicipalMap({
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/streets-v11",
-        center: [80.100807, 12.928291], // Example center
-        zoom: 16,
+        center: [80.098502, 12.9299788], // Example center
+        zoom: 17,
       });
     }
   }, []);
@@ -243,7 +244,7 @@ export default function MunicipalMap({
       }
 
       // Extract geometry from the first trip
-      return data.trips[0].geometry; 
+      return data.trips[0].geometry;
     } catch (err) {
       console.error(err);
       return null;
@@ -329,7 +330,10 @@ export default function MunicipalMap({
   // JSX: container for the map
   // ----------------------------------------
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
+      <div className="absolute z-10 top-4 left-4 text-3xl bg-white px-2 py-1 rounded-md font-semibold flex gap-2 items-center justify-center">
+        <FaLocationDot size={25} />Tambaram
+      </div>
       <div ref={mapContainer} className="w-full h-full" />
     </div>
   );

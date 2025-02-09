@@ -32,6 +32,31 @@ app.get("/test",async(req,res)=>{
 app.use("/truck",truckRoute);
 app.use("/dustbin",dustbinRoute);
 
+app.get('/center/:location', async (req, res) => {
+    const { location } = req.params;
+  
+    try {
+      // Query the database for recycling centers with the given location
+      const centers = await prisma.recycling_centers.findMany({
+        where: {
+          location: location,
+        },
+      });
+  
+      if (centers.length === 0) {
+        return res.status(404).json({ message: "No centers found for the given location." });
+      }
+  
+      res.status(200).json({
+        message: "Recycling centers fetched successfully.",
+        data: centers,
+      });
+    } catch (error) {
+      console.error("Error fetching recycling centers:", error);
+      res.status(500).json({ error: "Internal server error." });
+    }
+  });
+  
 
 
 connectToDB();
