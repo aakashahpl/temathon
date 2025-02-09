@@ -3,6 +3,9 @@
 ## Objective
 We’re building a smart dustbin that can classify and sort waste automatically into three categories: **biodegradable, recyclable, and non-recyclable**. The goal is to make waste management more efficient, convenient, and eco-friendly, reducing the burden on users and encouraging better waste segregation habits. Additionally, we aim to provide useful tools for both residents and municipal authorities, which will help to promote cleaner environments, reduce waste mismanagement, and improve recycling efforts.
 
+![Some descriptive alt text](https://i.pinimg.com/736x/1e/2b/4a/1e2b4a5ffc9ae443cae225def06a86a7.jpg)
+
+
 ## Implementation
 ### IoT-Enabled Smart Bins
 #### Hardware:
