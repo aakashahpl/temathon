@@ -1,81 +1,137 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MunicipalMap from "@/components/DriverMapBox";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
 
-const pickupPoints = [
-	{ id: 1, location: [80.11, 12.93], status: "pending", time: "10:00 AM" },
-	{ id: 2, location: [80.12, 12.935], status: "completed", time: "10:30 AM" },
-	{ id: 3, location: [80.115, 12.928], status: "missed", time: "11:00 AM" },
-];
+export default function Municipal() {
+  const router = useRouter();
 
-const Municipal = () => {
-	const [points, setPoints] = useState(pickupPoints);
-	const router = useRouter();
+  const [truck, setTruck] = useState(null);
+  const [dustbins, setDustbins] = useState([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [activeDustbin, setActiveDustbin] = useState(null);
 
-	const handleStatusChange = (id, newStatus) => {
-		setPoints((prev) =>
-			prev.map((point) =>
-				point.id === id ? { ...point, status: newStatus } : point
-			)
-		);
-	};
+  // Fetch truck and dustbin data once
+  useEffect(() => {
+    fetch("http://localhost:4200/truck/getTruck/15") // Change to your real endpoint
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.message === "Truck fetched successfully." && data.data) {
+          const truckData = data.data;
+          setTruck(truckData);
 
-	const handleLogout = () => {
-		router.push("/");
-	};
+          // If truck has dustbin_ids, fetch those dustbins
+          if (truckData.dustbin_ids) {
+            fetch("http://localhost:4200/dustbin/fetchMany", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ dustbin_ids: truckData.dustbin_ids }),
+            })
+              .then((res) => res.json())
+              .then((dustbinData) => {
+                if (dustbinData.message === "Dustbins fetched successfully.") {
+                  // Initialize dustbins with "pending" status
+                  const binsWithStatus = dustbinData.data.map((bin) => ({
+                    ...bin,
+                    status: "pending",
+                  }));
+                  setDustbins(binsWithStatus);
+                }
+              })
+              .catch((error) => console.error("Error fetching dustbins:", error));
+          }
+        }
+      })
+      .catch((error) => console.error("Error fetching truck data:", error));
+  }, []);
 
-	return (
-		<div className="flex h-screen">
-			{/* Sidebar */}
-			<div className="w-64 bg-gray-900 text-white p-6 flex flex-col justify-between">
-				<div>
-					<h2 className="text-2xl font-bold mb-6">Driver Dashboard</h2>
+  // Called by child when the truck is near a dustbin
+  const handleDustbinReached = (dustbinId) => {
+    setIsPaused(true);
+    setActiveDustbin(dustbinId); // Show popup in sidebar
+  };
 
-					{/* Pickup Points List */}
-					<h3 className="text-lg mb-4">Pickup Points</h3>
-					<ul className="space-y-4">
-						{points.map((point) => (
-							<li key={point.id} className="p-3 bg-gray-800 rounded-lg">
-								<p className="mb-1">Time: {point.time}</p>
-								<p className="mb-2 capitalize">Status: {point.status}</p>
-								{point.status === "pending" && (
-									<div className="flex gap-2">
-										<Button
-											onClick={() => handleStatusChange(point.id, "completed")}
-											className="flex-1 bg-green-600 hover:bg-green-700"
-										>
-											Complete
-										</Button>
-										<Button
-											onClick={() => handleStatusChange(point.id, "missed")}
-											className="flex-1 bg-red-600 hover:bg-red-700"
-										>
-											Missed
-										</Button>
-									</div>
-								)}
-							</li>
-						))}
-					</ul>
-				</div>
+  // Mark dustbin as completed or missed
+  const handleUpdateDustbinStatus = (status) => {
+    if (!activeDustbin) return;
+    setDustbins((prev) =>
+      prev.map((d) => (d.id === activeDustbin ? { ...d, status } : d))
+    );
+    setActiveDustbin(null);
+    setIsPaused(false);
+  };
 
-				{/* Logout Button */}
-				<Button
-					onClick={handleLogout}
-					className="w-full bg-red-600 hover:bg-red-700"
-				>
-					Logout
-				</Button>
-			</div>
+  const handleLogout = () => {
+    // Example logout
+    router.push("/");
+  };
 
-			{/* Map */}
-			<div className="flex-1">
-				<MunicipalMap points={points} />
-			</div>
-		</div>
-	);
-};
+  return (
+    // Full-screen container so map is visible
+    <div className="flex h-screen w-screen">
+      {/* Sidebar */}
+      <div className=" w-96 bg-gray-900 text-white p-6 flex flex-col justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-6 border-b-[1px] border-gray-200 pb-2">Driver Dashboard</h2>
 
-export default Municipal;
+          <h3 className="text-lg mb-4">Dustbins</h3>
+
+          {/* Popup to mark dustbin as completed/missed */}
+          {activeDustbin && (
+            <div className="mt-6 p-3 bg-gray-800 rounded">
+              <p className="mb-2">Dustbin #{activeDustbin} reached. Choose an action:</p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleUpdateDustbinStatus("completed")}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  Complete
+                </Button>
+                <Button
+                  onClick={() => handleUpdateDustbinStatus("missed")}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  Missed
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Dustbin list with scrolling */}
+          <ul className="space-y-4 h-96 overflow-y-scroll mt-4">
+            {dustbins.map((bin) => (
+              <li
+                key={bin.id}
+                className={`p-3 rounded-lg ${
+                  bin.status === "completed"
+                    ? "bg-green-600"
+                    : bin.status === "missed"
+                    ? "bg-red-600"
+                    : "bg-gray-800"
+                }`}
+              >
+                <p className="mb-1 font-bold">Dustbin ID: {bin.id}</p>
+                <p className="mb-2 capitalize">Status: {bin.status}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <Button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700">
+          Logout
+        </Button>
+      </div>
+
+      {/* Map Section */}
+      <div className="flex-1">
+        <MunicipalMap
+          truck={truck}
+          dustbins={dustbins}
+          isPaused={isPaused}
+          onDustbinReached={handleDustbinReached}
+        />
+      </div>
+    </div>
+  );
+}

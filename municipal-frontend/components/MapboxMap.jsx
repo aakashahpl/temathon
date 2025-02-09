@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { BsTrash3Fill } from "react-icons/bs";
 import { FaTruckFront } from "react-icons/fa6";
 import { createRoot } from "react-dom/client";
+import { FaLocationDot } from "react-icons/fa6";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWFrYXNocGF0ZWxhaHBsIiwiYSI6ImNsbWF2MnpkejBkeW8zcGpyNnZsZGs1ancifQ.1CZK6EwQfroKMlUqn1yobA";
@@ -224,95 +225,95 @@ const MapboxMap = ({ currentTruck }) => {
     progressRefs.current = [0, 0];
   };
 
-const fetchOptimizedRoute = async (waypoints, color, colonyIndex) => {
-  const coordinates = waypoints
-    .map((marker) => `${marker.lng},${marker.lat}`)
-    .join(";");
-  const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}&roundtrip=true`;
+  const fetchOptimizedRoute = async (waypoints, color, colonyIndex) => {
+    const coordinates = waypoints
+      .map((marker) => `${marker.lng},${marker.lat}`)
+      .join(";");
+    const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}&roundtrip=true`;
 
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
 
-    if (data.trips && data.trips.length > 0) {
-      const trip = data.trips[0];
-      routeRefs.current[colonyIndex] = trip.geometry.coordinates;
+      if (data.trips && data.trips.length > 0) {
+        const trip = data.trips[0];
+        routeRefs.current[colonyIndex] = trip.geometry.coordinates;
 
-      map.current.addSource(`route-${colonyIndex}`, {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: routeRefs.current[colonyIndex],
+        map.current.addSource(`route-${colonyIndex}`, {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: routeRefs.current[colonyIndex],
+            },
           },
-        },
-      });
+        });
 
-      map.current.addLayer({
-        id: `route-${colonyIndex}`,
-        type: "line",
-        source: `route-${colonyIndex}`,
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": color, // always black
-          "line-width": 4,
-        },
-      });
+        map.current.addLayer({
+          id: `route-${colonyIndex}`,
+          type: "line",
+          source: `route-${colonyIndex}`,
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": color, // always black
+            "line-width": 4,
+          },
+        });
 
-      // Prepare truck assignment data.
-      const truckData = {
-        truck_id: colonyIndex + 1, // Example: truck ID based on colony index.
-        truck_number: `Truck ${colonyIndex + 1}`,
-        route_geometry: trip.geometry, // Optimized GeoJSON route.
-        current_location: trip.geometry.coordinates[0], // Starting point.
-        status: "in transit",
-        assigned_colony: colonyIndex === 0 ? "cto" : "vagai",
-        route_distance: trip.distance / 1000, // Convert meters to kilometers.
-        route_duration: trip.duration, // In seconds.
-        dustbin_ids: waypoints.map((marker) => marker.id), // List of dustbin IDs.
-      };
+        // Prepare truck assignment data.
+        const truckData = {
+          truck_id: colonyIndex + 1, // Example: truck ID based on colony index.
+          truck_number: `Truck ${colonyIndex + 1}`,
+          route_geometry: trip.geometry, // Optimized GeoJSON route.
+          current_location: trip.geometry.coordinates[0], // Starting point.
+          status: "in transit",
+          assigned_colony: colonyIndex === 0 ? "cto" : "vagai",
+          route_distance: trip.distance / 1000, // Convert meters to kilometers.
+          route_duration: trip.duration, // In seconds.
+          dustbin_ids: waypoints.map((marker) => marker.id), // List of dustbin IDs.
+        };
 
-      // Call the backend API to assign the truck.
-      await assignTruck(truckData);
+        // Call the backend API to assign the truck.
+        await assignTruck(truckData);
 
-      // Add the moving truck marker.
-      const markerEl = document.createElement("div");
-      const markerRoot = createRoot(markerEl);
-      markerRoot.render(<FaTruckFront size={25} />);
-      markerRefs.current[colonyIndex] = new mapboxgl.Marker(markerEl)
-        .setLngLat(trip.geometry.coordinates[0])
-        .addTo(map.current);
+        // Add the moving truck marker.
+        const markerEl = document.createElement("div");
+        const markerRoot = createRoot(markerEl);
+        markerRoot.render(<FaTruckFront size={25} />);
+        markerRefs.current[colonyIndex] = new mapboxgl.Marker(markerEl)
+          .setLngLat(trip.geometry.coordinates[0])
+          .addTo(map.current);
 
-      animateMarker(colonyIndex);
+        animateMarker(colonyIndex);
+      }
+    } catch (error) {
+      console.error("Error fetching optimized route:", error);
     }
-  } catch (error) {
-    console.error("Error fetching optimized route:", error);
-  }
-};
+  };
 
-// Function to assign truck via backend API
-const assignTruck = async (truckData) => {
-  try {
-    const response = await fetch("http://localhost:4200/truck/assign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(truckData),
-    });
-    const result = await response.json();
-    if (result.message === "Truck assigned successfully.") {
-      console.log("Truck assignment successful:", result.data);
-    } else {
-      console.error("Truck assignment failed:", result);
+  // Function to assign truck via backend API
+  const assignTruck = async (truckData) => {
+    try {
+      const response = await fetch("http://localhost:4200/truck/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(truckData),
+      });
+      const result = await response.json();
+      if (result.message === "Truck assigned successfully.") {
+        console.log("Truck assignment successful:", result.data);
+      } else {
+        console.error("Truck assignment failed:", result);
+      }
+    } catch (error) {
+      console.error("Error assigning truck:", error);
     }
-  } catch (error) {
-    console.error("Error assigning truck:", error);
-  }
-};
+  };
 
   // Helper: Calculate approximate Euclidean distance (for small distances).
   const getDistance = (pos1, pos2) => {
@@ -389,8 +390,8 @@ const assignTruck = async (truckData) => {
 
   return (
     <div className="w-full h-screen relative">
-      <div className="absolute z-10 top-4 left-4 text-3xl bg-white px-2 py-1 rounded-md font-semibold uppercase">
-        Tambaram
+      <div className="absolute z-10 top-4 left-4 text-3xl bg-white px-2 py-1 rounded-md font-semibold flex gap-2 items-center justify-center">
+        <FaLocationDot size={25} />Tambaram
       </div>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
     </div>
