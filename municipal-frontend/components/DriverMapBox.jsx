@@ -141,7 +141,7 @@ export default function MunicipalMap({
       return;
     }
 
-    const speed = 0.005;
+    const speed = 0.01;
     progressRef.current += speed;
 
     if (progressRef.current >= routeRef.current.length - 1) {

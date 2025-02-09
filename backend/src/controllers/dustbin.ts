@@ -70,3 +70,37 @@ export const fetchMany = async (req: Request, res: Response) => {
       return res.status(500).json({ message: "Server error. Please try again later." });
     }
   };
+
+
+  export const emptyDustbin = async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      // Convert id to a number if needed
+      const dustbinId = Number(id);
+  
+      // Update the dustbin in the database, e.g.:
+      // Set bioFillLevel, nonBioFillLevel, and totalWaste to 0.
+      // Or, do any other logic you need for "emptying" the dustbin.
+      const updatedDustbin = await prisma.dustbins.update({
+        where: { id: dustbinId },
+        data: {
+          bioFillLevel: 0,
+          nonBioFillLevel: 0,
+          totalWaste: 0,
+          // Possibly also update any 'status' field if you have it
+          // status: "emptied",
+        },
+      });
+  
+      return res.status(200).json({
+        message: "Dustbin emptied successfully.",
+        data: updatedDustbin,
+      });
+    } catch (error) {
+      console.error("Error emptying dustbin:", error);
+      return res.status(500).json({
+        error: "Internal server error while emptying dustbin",
+      });
+    }
+  };
