@@ -194,7 +194,7 @@ export default function Home() {
 						🌍
 					</p>
 					<div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in">
-						<button className="group px-8 py-4 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
+						<button onClick={()=>{router.push('/signup')}} className="group px-8 py-4 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
 							Get Started Free
 							<FaArrowRight className="inline ml-2 transform group-hover:translate-x-1 transition-transform duration-300" />
 						</button>
@@ -320,9 +320,9 @@ export default function Home() {
 						{[
 							{
 								icon: FaMapMarkerAlt,
-								text: "123 Green Street, Eco City, EC 12345",
+								text: "Anna University",
 							},
-							{ icon: FaPhone, text: "+1 (555) 123-4567" },
+							{ icon: FaPhone, text: "+91 98765 43210" },
 							{ icon: FaEnvelope, text: "contact@smartwaste.com" },
 						].map((contact, index) => (
 							<div
